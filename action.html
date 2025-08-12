@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>openPIMS Status</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        .error-message {
+            color: #d32f2f;
+            background-color: #ffebee;
+            border: 1px solid #ffcdd2;
+            border-radius: 4px;
+            padding: 10px;
+            margin-top: 10px;
+            font-size: 14px;
+            display: none;
+        }
+        .error-message.visible {
+            display: block;
+        }
+        .button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body class="action-page">
+    <div class="header">
+        <img src="openpims.png" width="32" height="32" alt="openPIMS Logo">
+        <h2>openPIMS</h2>
+    </div>
+
+    <div id="loggedInContent" class="hidden">
+        <div class="url-display" id="url"></div>
+        <button id="logoutButton" class="button logout-button">Ausloggen</button>
+    </div>
+
+    <div id="loginForm" class="login-form">
+        <div class="form-group">
+            <label for="email">E-Mail:</label>
+            <input type="email" id="email" name="email">
+        </div>
+        <div class="form-group">
+            <label for="password">Passwort:</label>
+            <input type="password" id="password" name="password">
+        </div>
+        <button id="loginButton" type="button" class="button login-button">Anmelden</button>
+        <div id="errorMessage" class="error-message"></div>
+    </div>
+
+    <script src="options.js"></script>
+</body>
+</html>

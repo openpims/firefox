@@ -1,0 +1,31 @@
+{
+  "name": "openPIMS",
+  "description": "No more cookie banner",
+  "version": "0.0.0.3",
+  "author": "Stefan Böck",
+  "manifest_version": 2,
+  "background": {
+    "scripts": ["background.js"],
+    "persistent": true
+  },
+  "icons": {
+    "128": "openpims.png"
+  },
+  "browser_action": {
+    "default_icon": "openpims.png",
+    "default_popup": "action.html",
+    "default_title": "openPIMS"
+  },
+  "permissions": [
+    "webRequest",
+    "webRequestBlocking",
+    "storage",
+    "<all_urls>"
+  ],
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "openpims-addon@example.com",
+      "strict_min_version": "128.0"
+    }
+  }
+}

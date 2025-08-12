@@ -1,0 +1,117 @@
+/* Allgemeine Styles */
+body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    background-color: white;
+}
+
+/* Action Page Styles */
+.action-page {
+    padding: 20px;
+    width: 300px;
+}
+
+.header {
+    display: flex;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.header img {
+    margin-right: 10px;
+}
+
+/* Login Form Styles */
+.login-form {
+    background: white;
+    padding: 1.5rem;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.form-group {
+    margin-bottom: 1rem;
+}
+
+label {
+    display: block;
+    margin-bottom: 0.5rem;
+}
+
+input {
+    width: 100%;
+    padding: 0.5rem;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    box-sizing: border-box;
+}
+
+/* Button Styles */
+.button {
+    margin-top: 15px;
+    padding: 8px 16px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    width: 100%;
+    color: white;
+}
+
+.login-button {
+    background-color: #4CAF50;
+}
+
+.login-button:hover {
+    background-color: #45a049;
+}
+
+.logout-button {
+    background-color: transparent;
+    color: #666;
+    border: 1px solid #ddd;
+    padding: 6px 12px;
+    font-size: 0.9em;
+    margin-top: 10px;
+    transition: all 0.2s ease;
+}
+
+.logout-button:hover {
+    background-color: #f5f5f5;
+    color: #333;
+    border-color: #ccc;
+}
+
+.logout-button:active {
+    background-color: #eee;
+}
+
+/* Content Styles */
+.url-display {
+    background-color: white;
+    padding: 10px;
+    border-radius: 4px;
+    word-break: break-all;
+    border: 1px solid #ddd;
+}
+
+.status {
+    margin-top: 10px;
+    color: #666;
+}
+
+.error-message {
+    color: #f44336;
+    background-color: #ffebee;
+    padding: 10px;
+    border-radius: 4px;
+    margin-top: 1rem;
+    display: none;
+}
+
+.error-message.visible {
+    display: block;
+}
+
+.hidden {
+    display: none;
+} 
