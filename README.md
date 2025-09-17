@@ -1,14 +1,14 @@
-# openPIMS Firefox Extension
+# OpenPIMS Firefox Extension
 
-A Firefox extension for openPIMS integration.
+A Firefox extension for OpenPIMS integration.
 
 ## Description
 
-openPIMS Firefox Extension provides seamless integration with openPIMS services. The extension allows users to authenticate and interact with openPIMS directly from their browser.
+OpenPIMS Firefox Extension provides seamless integration with OpenPIMS services. The extension allows users to authenticate and interact with OpenPIMS directly from their browser.
 
 ## Features
 
-- User authentication with openPIMS
+- User authentication with OpenPIMS
 - Server URL configuration
 - Clean, responsive popup interface
 - Secure credential management
@@ -33,7 +33,7 @@ Try the extension: https://addons.mozilla.org/de/firefox/addon/openpims/
 
 ## Usage
 
-1. Click the openPIMS extension icon in the Firefox toolbar
+1. Click the OpenPIMS extension icon in the Firefox toolbar
 2. Enter your server URL (defaults to https://me.openpims.de)
 3. Provide your email and password credentials
 4. Click "Anmelden" to log in
