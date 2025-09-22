@@ -1,7 +1,7 @@
 {
-  "name": "openPIMS",
+  "name": "OpenPIMS",
   "description": "No more cookie banner",
-  "version": "0.0.0.3",
+  "version": "0.1.0",
   "author": "Stefan Böck",
   "manifest_version": 2,
   "background": {
@@ -14,7 +14,7 @@
   "browser_action": {
     "default_icon": "openpims.png",
     "default_popup": "action.html",
-    "default_title": "openPIMS"
+    "default_title": "OpenPIMS"
   },
   "permissions": [
     "webRequest",

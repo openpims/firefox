@@ -100,16 +100,23 @@ input {
 }
 
 .error-message {
-    color: #f44336;
+    color: #d32f2f;
     background-color: #ffebee;
-    padding: 10px;
+    border: 1px solid #ffcdd2;
     border-radius: 4px;
-    margin-top: 1rem;
+    padding: 10px;
+    margin-top: 10px;
+    font-size: 14px;
     display: none;
 }
 
 .error-message.visible {
     display: block;
+}
+
+.button:disabled {
+    background-color: #cccccc;
+    cursor: not-allowed;
 }
 
 .hidden {

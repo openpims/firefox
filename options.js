@@ -1,28 +1,20 @@
 /*
-  openPIMS popup script (Firefox, MV2).
+  OpenPIMS popup script (Firefox, MV2).
   This file is used by action.html as the popup logic (login/logout).
   options.html is deprecated and not used.
 */
 // Lade die gespeicherte URL
-chrome.storage.local.get(['openPimsUrl', 'isLoggedIn', 'email'], (result) => {
+chrome.storage.local.get(['openPimsUrl', 'isLoggedIn', 'email', 'serverUrl'], (result) => {
     const loggedInContent = document.getElementById('loggedInContent');
     const loginForm = document.getElementById('loginForm');
     const urlElement = document.getElementById('url');
 
     if (result.isLoggedIn && result.openPimsUrl) {
-        // Safely render user and URL without using innerHTML
-        while (urlElement.firstChild) {
-            urlElement.removeChild(urlElement.firstChild);
-        }
-        const userDiv = document.createElement('div');
-        userDiv.style.marginBottom = '10px';
-        userDiv.textContent = `Angemeldet als: ${result.email || 'Unbekannt'}`;
-        const urlDiv = document.createElement('div');
-        urlDiv.style.fontSize = '0.9em';
-        urlDiv.style.color = '#666';
-        urlDiv.textContent = `URL: ${result.openPimsUrl}`;
-        urlElement.appendChild(userDiv);
-        urlElement.appendChild(urlDiv);
+        urlElement.innerHTML = `
+            <div style="margin-bottom: 10px;">Angemeldet als: ${result.email || 'Unbekannt'}</div>
+            <div style="font-size: 0.9em; color: #666;">Server: ${result.serverUrl || 'https://me.openpims.de'}</div>
+            <div style="font-size: 0.9em; color: #666;">URL: ${result.openPimsUrl}</div>
+        `;
         loggedInContent.classList.remove('hidden');
         loginForm.classList.add('hidden');
     } else {
@@ -34,7 +26,7 @@ chrome.storage.local.get(['openPimsUrl', 'isLoggedIn', 'email'], (result) => {
 // Warte bis das DOM vollständig geladen ist
 document.addEventListener('DOMContentLoaded', () => {
     console.log('DOM geladen, registriere Event-Listener');
-    
+
     const loginButton = document.getElementById('loginButton');
     if (!loginButton) {
         console.error('Login-Button nicht gefunden!');
@@ -44,9 +36,10 @@ document.addEventListener('DOMContentLoaded', () => {
     loginButton.addEventListener('click', async function(e) {
         console.log('Login-Button geklickt');
         e.preventDefault();
-        
+
         const email = document.getElementById('email').value;
         const password = document.getElementById('password').value;
+        const serverUrl = document.getElementById('serverUrl').value;
         const errorMessage = document.getElementById('errorMessage');
         const loginButton = document.getElementById('loginButton');
 
@@ -59,7 +52,7 @@ document.addEventListener('DOMContentLoaded', () => {
         console.log('E-Mail:', email);
         console.log('Passwort-Länge:', password.length);
 
-        if (!email || !password) {
+        if (!email || !password || !serverUrl) {
             errorMessage.textContent = 'Bitte füllen Sie alle Felder aus.';
             errorMessage.classList.add('visible');
             loginButton.disabled = false;
@@ -73,7 +66,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 chrome.runtime.sendMessage({
                     action: 'login',
                     email: email,
-                    password: password
+                    password: password,
+                    serverUrl: serverUrl
                 }, response => {
                     if (chrome.runtime.lastError) {
                         reject(new Error(chrome.runtime.lastError.message));
@@ -91,35 +85,28 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const data = response.data;
             console.log('Login erfolgreich');
-            
-            await chrome.storage.local.set({ 
+
+            await chrome.storage.local.set({
                 openPimsUrl: data.token,
                 email: email,
+                serverUrl: serverUrl,
                 isLoggedIn: true
             });
-            
+
             // UI aktualisieren
             document.getElementById('loginForm').classList.add('hidden');
             document.getElementById('loggedInContent').classList.remove('hidden');
-            const urlElement = document.getElementById('url');
-            while (urlElement.firstChild) {
-                urlElement.removeChild(urlElement.firstChild);
-            }
-            const userDiv = document.createElement('div');
-            userDiv.style.marginBottom = '10px';
-            userDiv.textContent = `Angemeldet als: ${email}`;
-            const urlDiv = document.createElement('div');
-            urlDiv.style.fontSize = '0.9em';
-            urlDiv.style.color = '#666';
-            urlDiv.textContent = `URL: ${data.token}`;
-            urlElement.appendChild(userDiv);
-            urlElement.appendChild(urlDiv);
-            
+            document.getElementById('url').innerHTML = `
+                <div style="margin-bottom: 10px;">Angemeldet als: ${email}</div>
+                <div style="font-size: 0.9em; color: #666;">Server: ${serverUrl}</div>
+                <div style="font-size: 0.9em; color: #666;">URL: ${data.token}</div>
+            `;
+
         } catch (error) {
             // Nur die UI aktualisieren, keine Protokollierung
             errorMessage.textContent = error.message;
             errorMessage.classList.add('visible');
-            
+
             // Setze das Passwort-Feld zurück
             document.getElementById('password').value = '';
             document.getElementById('password').focus();
@@ -135,8 +122,8 @@ document.addEventListener('DOMContentLoaded', () => {
 document.getElementById('logoutButton').addEventListener('click', async () => {
     try {
         // Lösche die gespeicherten Daten
-        await chrome.storage.local.remove(['openPimsUrl', 'isLoggedIn', 'token', 'email']);
-        
+        await chrome.storage.local.remove(['openPimsUrl', 'isLoggedIn', 'token', 'email', 'serverUrl']);
+
         // Aktualisiere die Anzeige
         const loggedInContent = document.getElementById('loggedInContent');
         const loginForm = document.getElementById('loginForm');

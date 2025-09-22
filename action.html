@@ -1,32 +1,13 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>openPIMS Status</title>
+    <title>OpenPIMS Status</title>
     <link rel="stylesheet" href="styles.css">
-    <style>
-        .error-message {
-            color: #d32f2f;
-            background-color: #ffebee;
-            border: 1px solid #ffcdd2;
-            border-radius: 4px;
-            padding: 10px;
-            margin-top: 10px;
-            font-size: 14px;
-            display: none;
-        }
-        .error-message.visible {
-            display: block;
-        }
-        .button:disabled {
-            background-color: #cccccc;
-            cursor: not-allowed;
-        }
-    </style>
 </head>
 <body class="action-page">
     <div class="header">
-        <img src="openpims.png" width="32" height="32" alt="openPIMS Logo">
-        <h2>openPIMS</h2>
+        <img src="openpims.png" width="32" height="32" alt="OpenPIMS Logo">
+        <h2>OpenPIMS</h2>
     </div>
 
     <div id="loggedInContent" class="hidden">
@@ -35,6 +16,10 @@
     </div>
 
     <div id="loginForm" class="login-form">
+        <div class="form-group">
+            <label for="serverUrl">Server-URL:</label>
+            <input type="url" id="serverUrl" name="serverUrl" value="https://me.openpims.de">
+        </div>
         <div class="form-group">
             <label for="email">E-Mail:</label>
             <input type="email" id="email" name="email">
