@@ -19,7 +19,7 @@ Try the extension: https://addons.mozilla.org/de/firefox/addon/openpims/
 
 ## Other Versions
 
-- [Chrome Extension](https://github.com/openpims/chrome)
+- [Chromium Extension](https://github.com/openpims/chromium)
 - [Safari Extension](https://github.com/openpims/safari)
 - [mitmproxy Version](https://github.com/openpims/mitmproxy) - For users who prefer not to use browser extensions
 
