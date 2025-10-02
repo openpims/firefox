@@ -3,17 +3,16 @@
   This file is used by action.html as the popup logic (login/logout).
   options.html is deprecated and not used.
 */
-// Lade die gespeicherte URL
-chrome.storage.local.get(['openPimsUrl', 'isLoggedIn', 'email', 'serverUrl'], (result) => {
+// Lade die gespeicherten Daten
+chrome.storage.local.get(['userId', 'isLoggedIn', 'email', 'serverUrl'], (result) => {
     const loggedInContent = document.getElementById('loggedInContent');
     const loginForm = document.getElementById('loginForm');
     const urlElement = document.getElementById('url');
 
-    if (result.isLoggedIn && result.openPimsUrl) {
+    if (result.isLoggedIn && result.userId) {
         urlElement.innerHTML = `
             <div style="margin-bottom: 10px;">Angemeldet als: ${result.email || 'Unbekannt'}</div>
             <div style="font-size: 0.9em; color: #666;">Server: ${result.serverUrl || 'https://me.openpims.de'}</div>
-            <div style="font-size: 0.9em; color: #666;">URL: ${result.openPimsUrl}</div>
         `;
         loggedInContent.classList.remove('hidden');
         loginForm.classList.add('hidden');
@@ -83,23 +82,18 @@ document.addEventListener('DOMContentLoaded', () => {
                 throw new Error(response.error);
             }
 
-            const data = response.data;
             console.log('Login erfolgreich');
 
-            await chrome.storage.local.set({
-                openPimsUrl: data.token,
-                email: email,
-                serverUrl: serverUrl,
-                isLoggedIn: true
-            });
+            // Storage wurde bereits im background.js gesetzt
+            // Hole die aktualisierten Daten
+            const result = await chrome.storage.local.get(['userId', 'email', 'serverUrl']);
 
             // UI aktualisieren
             document.getElementById('loginForm').classList.add('hidden');
             document.getElementById('loggedInContent').classList.remove('hidden');
             document.getElementById('url').innerHTML = `
-                <div style="margin-bottom: 10px;">Angemeldet als: ${email}</div>
-                <div style="font-size: 0.9em; color: #666;">Server: ${serverUrl}</div>
-                <div style="font-size: 0.9em; color: #666;">URL: ${data.token}</div>
+                <div style="margin-bottom: 10px;">Angemeldet als: ${result.email}</div>
+                <div style="font-size: 0.9em; color: #666;">Server: ${result.serverUrl}</div>
             `;
 
         } catch (error) {
@@ -122,7 +116,7 @@ document.addEventListener('DOMContentLoaded', () => {
 document.getElementById('logoutButton').addEventListener('click', async () => {
     try {
         // Lösche die gespeicherten Daten
-        await chrome.storage.local.remove(['openPimsUrl', 'isLoggedIn', 'token', 'email', 'serverUrl']);
+        await chrome.storage.local.remove(['userId', 'secret', 'appDomain', 'isLoggedIn', 'email', 'serverUrl']);
 
         // Aktualisiere die Anzeige
         const loggedInContent = document.getElementById('loggedInContent');

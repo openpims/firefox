@@ -35,11 +35,44 @@ function createCleanError(message, status = null) {
     return error;
 }
 
-// Header Injection via webRequest (Firefox-compatible)
-let openPimsHeaderUrl = null;
-let headerListenerRegistered = false;
+// Deterministic subdomain generation with daily rotation
+async function generateDeterministicSubdomain(userId, secret, domain) {
+    // Get current day timestamp (same as PHP: floor(time() / 86400))
+    const dayTimestamp = Math.floor(Math.floor(Date.now() / 1000) / 86400);
 
-function onBeforeSendHeadersListener(details) {
+    // Concatenate inputs: userId + domain + dayTimestamp (secret is used as HMAC key, not in message)
+    const message = `${userId}${domain}${dayTimestamp}`;
+
+    // Convert to Uint8Array
+    const encoder = new TextEncoder();
+    const messageData = encoder.encode(message);
+    const secretData = encoder.encode(secret);
+
+    // Import secret as HMAC key
+    const key = await crypto.subtle.importKey(
+        'raw',
+        secretData,
+        { name: 'HMAC', hash: 'SHA-256' },
+        false,
+        ['sign']
+    );
+
+    // Generate HMAC
+    const signature = await crypto.subtle.sign('HMAC', key, messageData);
+
+    // Convert to hex string (full 64 chars)
+    const hashArray = Array.from(new Uint8Array(signature));
+    const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+
+    // Truncate to 32 chars (16 bytes = 128 bits) to fit DNS label limit of 63 chars
+    return hashHex.substring(0, 32);
+}
+
+// Header Injection via webRequest (Firefox-compatible) with dynamic subdomain generation
+let headerListenerRegistered = false;
+let userCredentials = null; // {userId, secret, appDomain}
+
+async function onBeforeSendHeadersListener(details) {
     // Clone headers to avoid mutation issues
     const headers = details.requestHeaders ? [...details.requestHeaders] : [];
 
@@ -51,19 +84,32 @@ function onBeforeSendHeadersListener(details) {
         }
     }
 
-    if (openPimsHeaderUrl) {
-        headers.push({ name: 'x-openpims', value: openPimsHeaderUrl });
+    if (userCredentials) {
+        try {
+            // Extract domain from URL
+            const url = new URL(details.url);
+            const domain = url.hostname;
+
+            // Generate domain-specific subdomain
+            const subdomain = await generateDeterministicSubdomain(
+                userCredentials.userId,
+                userCredentials.secret,
+                domain
+            );
+            const openPimsUrl = `https://${subdomain}.${userCredentials.appDomain}`;
+
+            headers.push({ name: 'x-openpims', value: openPimsUrl });
+        } catch (error) {
+            console.error('Error generating subdomain:', error);
+        }
     }
 
     return { requestHeaders: headers };
 }
 
-async function registerHeaderListener(url) {
-    openPimsHeaderUrl = url;
+async function registerHeaderListener() {
     try {
         if (headerListenerRegistered) {
-            // already registered, nothing to do (url updated via variable)
-            console.log('Header-Listener bereits registriert, aktualisiere URL.');
             return;
         }
         chrome.webRequest.onBeforeSendHeaders.addListener(
@@ -72,7 +118,6 @@ async function registerHeaderListener(url) {
             ["blocking", "requestHeaders"]
         );
         headerListenerRegistered = true;
-        console.log('Header-Listener registriert');
     } catch (error) {
         console.error('Fehler beim Registrieren des Header-Listeners:', error);
     }
@@ -83,31 +128,37 @@ async function unregisterHeaderListener() {
         if (headerListenerRegistered) {
             chrome.webRequest.onBeforeSendHeaders.removeListener(onBeforeSendHeadersListener);
             headerListenerRegistered = false;
-            console.log('Header-Listener entfernt');
         }
-        openPimsHeaderUrl = null;
+        userCredentials = null;
     } catch (error) {
         console.error('Fehler beim Entfernen des Header-Listeners:', error);
     }
 }
 
-// Kompatibilitätsfunktion für altes API
-const updateHeaderRules = async (url) => {
-    if (!url) {
-        console.error('Keine URL für Header verfügbar');
-        await unregisterHeaderListener();
-        return;
+const updateHeaderRules = async () => {
+    try {
+        const { userId, secret, appDomain } = await getStorageData(['userId', 'secret', 'appDomain']);
+
+        if (!userId || !secret || !appDomain) {
+            console.error('Keine User-ID, Secret oder App-Domain für Header-Regeln vorhanden');
+            return;
+        }
+
+        // Update credentials for header listener
+        userCredentials = { userId, secret, appDomain };
+        await registerHeaderListener();
+    } catch (error) {
+        console.error('Fehler beim Aktualisieren der Header-Regeln:', error);
     }
-    await registerHeaderListener(url);
 };
 
 // Event Listener
 const initializeExtension = async () => {
     try {
-        const { isLoggedIn, openPimsUrl } = await getStorageData(['openPimsUrl', 'isLoggedIn']);
+        const { isLoggedIn } = await getStorageData(['isLoggedIn']);
 
-        if (isLoggedIn && openPimsUrl) {
-            await updateHeaderRules(openPimsUrl);
+        if (isLoggedIn) {
+            await updateHeaderRules();
         }
     } catch (error) {
         console.error('Fehler bei der Initialisierung:', error);
@@ -117,17 +168,12 @@ const initializeExtension = async () => {
 // Event Listener für Storage-Änderungen
 chrome.storage.onChanged.addListener(async (changes, namespace) => {
     if (namespace === 'local') {
-        if (changes.openPimsUrl) {
-            if (changes.openPimsUrl.newValue) {
-                await updateHeaderRules(changes.openPimsUrl.newValue);
+        if (changes.isLoggedIn) {
+            if (changes.isLoggedIn.newValue) {
+                await updateHeaderRules();
             } else {
-                // Wenn die URL entfernt wurde (Logout), entferne die Header-Regeln
-                try {
-                    await unregisterHeaderListener();
-                    console.log('Header-Listener erfolgreich entfernt');
-                } catch (error) {
-                    console.error('Fehler beim Entfernen des Header-Listeners:', error);
-                }
+                // Benutzer ausgeloggt
+                await unregisterHeaderListener();
             }
         }
     }
@@ -169,24 +215,60 @@ async function handleLogin(email, password, serverUrl) {
             throw createCleanError(errorMessage, response.status);
         }
 
-        const openPimsUrl = await response.text();
+        const contentType = response.headers.get('content-type');
+        let data;
 
-        if (!openPimsUrl || openPimsUrl.trim() === '') {
-            throw createCleanError('Keine gültige URL vom Server erhalten');
+        if (contentType && contentType.includes('application/json')) {
+            // Server gibt JSON zurück
+            data = await response.json();
+
+            if (!data.userId || !data.token || !data.domain) {
+                throw createCleanError('Keine gültige User-ID, Token oder Domain vom Server erhalten');
+            }
+
+            // Speichere die Daten
+            await chrome.storage.local.set({
+                userId: data.userId,
+                secret: data.token,
+                appDomain: data.domain,
+                email: email,
+                serverUrl: serverUrl,
+                isLoggedIn: true
+            });
+        } else {
+            // Fallback: Server gibt nur Text zurück (alte API)
+            const text = await response.text();
+
+            if (!text || text.trim() === '') {
+                throw createCleanError('Keine gültige Antwort vom Server erhalten');
+            }
+
+            // Parse als JSON falls möglich
+            try {
+                data = JSON.parse(text);
+
+                if (!data.userId || !data.token || !data.domain) {
+                    throw createCleanError('Keine gültige User-ID, Token oder Domain vom Server erhalten');
+                }
+
+                await chrome.storage.local.set({
+                    userId: data.userId,
+                    secret: data.token,
+                    appDomain: data.domain,
+                    email: email,
+                    serverUrl: serverUrl,
+                    isLoggedIn: true
+                });
+            } catch (e) {
+                // Text ist kein JSON - alte API die nur URL zurückgibt
+                throw createCleanError('Server-Antwort hat falsches Format. Erwartet JSON mit userId, token und domain.');
+            }
         }
 
-        // Aktualisiere die Header-Regeln mit der neuen URL
-        await updateHeaderRules(openPimsUrl.trim());
+        // Aktualisiere die Header-Regeln
+        await updateHeaderRules();
 
-        // Speichere die Daten
-        await chrome.storage.local.set({
-            openPimsUrl: openPimsUrl.trim(),
-            email: email,
-            serverUrl: serverUrl,
-            isLoggedIn: true
-        });
-
-        return { token: openPimsUrl.trim() }; // Wir verwenden die URL als Token
+        return { success: true };
     } catch (error) {
         if (error.status) {
             console.error(`Login fehlgeschlagen (Status ${error.status}): ${error.message}`);
