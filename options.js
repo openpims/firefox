@@ -3,64 +3,80 @@
   This file is used by action.html as the popup logic (login/logout).
   options.html is deprecated and not used.
 */
-// Lade die gespeicherten Daten
-chrome.storage.local.get(['userId', 'isLoggedIn', 'email', 'serverUrl'], (result) => {
+
+// Helper function to update UI based on login state
+const updateLoginUI = (isLoggedIn, email, serverUrl) => {
     const loggedInContent = document.getElementById('loggedInContent');
     const loginForm = document.getElementById('loginForm');
     const urlElement = document.getElementById('url');
 
-    if (result.isLoggedIn && result.userId) {
-        urlElement.innerHTML = `
-            <div style="margin-bottom: 10px;">Angemeldet als: ${result.email || 'Unbekannt'}</div>
-            <div style="font-size: 0.9em; color: #666;">Server: ${result.serverUrl || 'https://me.openpims.de'}</div>
-        `;
+    if (isLoggedIn && email) {
+        // Clear previous content
+        urlElement.textContent = '';
+
+        // Create logged-in display
+        const emailDiv = document.createElement('div');
+        emailDiv.style.marginBottom = '10px';
+        emailDiv.textContent = `Logged in as: ${email}`;
+
+        const serverDiv = document.createElement('div');
+        serverDiv.style.fontSize = '0.9em';
+        serverDiv.style.color = '#666';
+        serverDiv.textContent = `Server: ${serverUrl || 'https://me.openpims.de'}`;
+
+        urlElement.appendChild(emailDiv);
+        urlElement.appendChild(serverDiv);
+
         loggedInContent.classList.remove('hidden');
         loginForm.classList.add('hidden');
     } else {
         loggedInContent.classList.add('hidden');
         loginForm.classList.remove('hidden');
     }
+};
+
+// Load stored data on popup open
+chrome.storage.local.get(['userId', 'isLoggedIn', 'email', 'serverUrl'], (result) => {
+    updateLoginUI(
+        result.isLoggedIn && result.userId,
+        result.email || 'Unknown',
+        result.serverUrl
+    );
 });
 
-// Warte bis das DOM vollständig geladen ist
+// Wait until DOM is fully loaded
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('DOM geladen, registriere Event-Listener');
-
     const loginButton = document.getElementById('loginButton');
     if (!loginButton) {
-        console.error('Login-Button nicht gefunden!');
+        console.error('Login button not found!');
         return;
     }
 
-    loginButton.addEventListener('click', async function(e) {
-        console.log('Login-Button geklickt');
+    // Login button event listener
+    loginButton.addEventListener('click', async (e) => {
         e.preventDefault();
 
         const email = document.getElementById('email').value;
         const password = document.getElementById('password').value;
         const serverUrl = document.getElementById('serverUrl').value;
         const errorMessage = document.getElementById('errorMessage');
-        const loginButton = document.getElementById('loginButton');
+        const button = document.getElementById('loginButton');
 
-        // UI-Status zurücksetzen
+        // Reset UI state
         errorMessage.textContent = '';
         errorMessage.classList.remove('visible');
-        loginButton.disabled = true;
-        loginButton.textContent = 'Anmeldung läuft...';
-
-        console.log('E-Mail:', email);
-        console.log('Passwort-Länge:', password.length);
+        button.disabled = true;
+        button.textContent = 'Logging in...';
 
         if (!email || !password || !serverUrl) {
-            errorMessage.textContent = 'Bitte füllen Sie alle Felder aus.';
+            errorMessage.textContent = 'Please fill in all fields.';
             errorMessage.classList.add('visible');
-            loginButton.disabled = false;
-            loginButton.textContent = 'Anmelden';
+            button.disabled = false;
+            button.textContent = 'Login';
             return;
         }
 
         try {
-            console.log('Sende Login-Anfrage...');
             const response = await new Promise((resolve, reject) => {
                 chrome.runtime.sendMessage({
                     action: 'login',
@@ -76,65 +92,54 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
             });
 
-            console.log('Antwort erhalten:', response);
-
             if (!response.success) {
                 throw new Error(response.error);
             }
 
-            console.log('Login erfolgreich');
+            // Storage was already set in background.js
+            // Get updated data
+            const result = await new Promise((resolve) => {
+                chrome.storage.local.get(['userId', 'email', 'serverUrl'], resolve);
+            });
 
-            // Storage wurde bereits im background.js gesetzt
-            // Hole die aktualisierten Daten
-            const result = await chrome.storage.local.get(['userId', 'email', 'serverUrl']);
-
-            // UI aktualisieren
-            document.getElementById('loginForm').classList.add('hidden');
-            document.getElementById('loggedInContent').classList.remove('hidden');
-            document.getElementById('url').innerHTML = `
-                <div style="margin-bottom: 10px;">Angemeldet als: ${result.email}</div>
-                <div style="font-size: 0.9em; color: #666;">Server: ${result.serverUrl}</div>
-            `;
+            // Update UI
+            updateLoginUI(true, result.email, result.serverUrl);
 
         } catch (error) {
-            // Nur die UI aktualisieren, keine Protokollierung
+            // Only update UI, no logging
             errorMessage.textContent = error.message;
             errorMessage.classList.add('visible');
 
-            // Setze das Passwort-Feld zurück
+            // Reset password field
             document.getElementById('password').value = '';
             document.getElementById('password').focus();
         } finally {
-            // UI-Status zurücksetzen
-            loginButton.disabled = false;
-            loginButton.textContent = 'Anmelden';
+            // Reset UI state
+            button.disabled = false;
+            button.textContent = 'Login';
         }
     });
-});
 
-// Logout-Button Event Listener
-document.getElementById('logoutButton').addEventListener('click', async () => {
-    try {
-        // Lösche die gespeicherten Daten
-        await chrome.storage.local.remove(['userId', 'secret', 'appDomain', 'isLoggedIn', 'email', 'serverUrl']);
+    // Logout button event listener
+    document.getElementById('logoutButton').addEventListener('click', async () => {
+        try {
+            // Delete stored data
+            await chrome.storage.local.remove(['userId', 'secret', 'appDomain', 'isLoggedIn', 'email', 'serverUrl']);
 
-        // Aktualisiere die Anzeige
-        const loggedInContent = document.getElementById('loggedInContent');
-        const loginForm = document.getElementById('loginForm');
-        const urlElement = document.getElementById('url');
-        const emailInput = document.getElementById('email');
-        const passwordInput = document.getElementById('password');
-        const errorMessage = document.getElementById('errorMessage');
+            // Update display
+            const emailInput = document.getElementById('email');
+            const passwordInput = document.getElementById('password');
+            const errorMessage = document.getElementById('errorMessage');
 
-        // Setze Formularfelder zurück
-        emailInput.value = '';
-        passwordInput.value = '';
-        errorMessage.textContent = '';
+            // Reset form fields
+            emailInput.value = '';
+            passwordInput.value = '';
+            errorMessage.textContent = '';
 
-        loggedInContent.classList.add('hidden');
-        loginForm.classList.remove('hidden');
-        urlElement.textContent = '';
-    } catch (error) {
-        console.error('Fehler beim Ausloggen:', error);
-    }
+            // Update UI
+            updateLoginUI(false, '', '');
+        } catch (error) {
+            console.error('Error during logout:', error);
+        }
+    });
 });

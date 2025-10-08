@@ -94,11 +94,6 @@ input {
     border: 1px solid #ddd;
 }
 
-.status {
-    margin-top: 10px;
-    color: #666;
-}
-
 .error-message {
     color: #d32f2f;
     background-color: #ffebee;
